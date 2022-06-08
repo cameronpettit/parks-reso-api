@@ -74,6 +74,22 @@ resource "aws_dynamodb_table" "park_dup_table" {
       "sk"
     ]
   }
+
+  global_secondary_index {
+    name               = "passStatusIndex-20220601"
+    hash_key           = "passStatus"
+    write_capacity     = 1
+    read_capacity      = 1
+    projection_type    = "INCLUDE"
+    non_key_attributes = [
+      "type",
+      "date",
+      "pk",
+      "sk",
+      "facilityName",
+      "email"
+    ]
+  }
 }
 
 resource "aws_backup_vault" "parksreso_backup_vault" {

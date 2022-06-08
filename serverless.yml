@@ -225,6 +225,22 @@ resources:
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
+          - IndexName: passStatusIndex-20220601
+            KeySchema:
+              - AttributeName: passStatus
+                KeyType: HASH
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - type
+                - facilityName
+                - date
+                - pk
+                - sk
+                - email
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
           - IndexName: shortPassDate-index
             KeySchema:
               - AttributeName: shortPassDate

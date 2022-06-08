@@ -2,8 +2,16 @@ data "aws_ssm_parameter" "db_name" {
   name = "/parks-reso-api/db-name"
 }
 
+data "aws_ssm_parameter" "pass_status_index" {
+  name = "/parks-reso-api/pass-status-index"
+}
+
 data "aws_ssm_parameter" "gc_notify_api_path" {
   name = "/parks-reso-api/gc-notify-api-path"
+}
+
+data "aws_ssm_parameter" "gc_notify_api_bulk_path" {
+  name = "/parks-reso-api/gc-notify-api-bulk-path"
 }
 
 data "aws_ssm_parameter" "gc_notify_api_key" {
@@ -16,6 +24,10 @@ data "aws_ssm_parameter" "gc_notify_parking_receipt_template_id" {
 
 data "aws_ssm_parameter" "gc_notify_trail_receipt_template_id" {
   name = "/parks-reso-api/gc-notify-trail-receipt-template-id"
+}
+
+data "aws_ssm_parameter" "gc_notify_reminder_template_id" {
+  name = "/parks-reso-api/gc-notify-reminder-template-id"
 }
 
 data "aws_ssm_parameter" "gc_notify_cancel_template_id" {
