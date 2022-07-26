@@ -88,8 +88,6 @@ exports.handler = async (event, context) => {
       if (facilityData.type === 'Parking') {
         numberOfGuests = 1;
       }
-
-
     };
 
     // numberOfGuests cannot be less than 1.
@@ -99,7 +97,6 @@ exports.handler = async (event, context) => {
         title: 'Invalid number of guests'
       });
     }
-
 
     // Get current time vs booking time information
     // Log server DateTime
