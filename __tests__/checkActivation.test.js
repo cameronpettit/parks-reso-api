@@ -1,28 +1,29 @@
 const MockDate = require('mockdate');
 const { DateTime } = require('luxon');
-const AWS = require('aws-sdk');
-const { DocumentClient } = require('aws-sdk/clients/dynamodb');
+const { dbTools } = require('./global/dbTools')
+const { generateMockTableName } = require('./global/settings');
 
-const checkActivation = require('../lambda/checkActivation/index');
-const { REGION, ENDPOINT, TABLE_NAME } = require('./global/settings');
+const mockTableName = generateMockTableName();
 
-let dynamoDb;
-let docClient;
+// mock dynamoUtils
+jest.mock('../lambda/dynamoUtil', () => {
+  const originalModule = jest.requireActual('../lambda/dynamoUtil');
+  return {
+    __esModule: true, // Use it when dealing with esModules
+    ...originalModule,
+    // below here: exported dynamoUtil methods to be mocked
+    TABLE_NAME: mockTableName,
+    // getPassesByStatus: jest.fn(),
+    // getParks: jest.fn(),
+    // getFacilities: jest.fn(),
 
-async function setupDb() {
-  dynamoDb = new AWS.DynamoDB({
-    region: REGION,
-    endpoint: ENDPOINT
-  });
-  docClient = new DocumentClient({
-    region: REGION,
-    endpoint: ENDPOINT,
-    convertEmptyValues: true
-  });
-  
+  }
+});
+
+async function populateDB(docClient) {
   await docClient
     .put({
-      TableName: TABLE_NAME,
+      TableName: mockTableName,
       Item: {
         pk: 'config',
         sk: 'config',
@@ -32,7 +33,7 @@ async function setupDb() {
     .promise();
   await docClient
     .put({
-      TableName: TABLE_NAME,
+      TableName: mockTableName,
       Item: {
         pk: 'park',
         sk: 'Test Park',
@@ -46,7 +47,7 @@ async function setupDb() {
     .promise();
   await docClient
     .put({
-      TableName: TABLE_NAME,
+      TableName: mockTableName,
       Item: {
         pk: 'facility::Test Park',
         sk: 'Parking Lot A',
@@ -64,7 +65,7 @@ async function setupDb() {
     .promise();
   await docClient
     .put({
-      TableName: TABLE_NAME,
+      TableName: mockTableName,
       Item: {
         pk: 'facility::Test Park',
         sk: 'Parking Lot B',
@@ -82,16 +83,26 @@ async function setupDb() {
     .promise();
 }
 
+const checkActivation = require('../lambda/checkActivation/index');
+
 describe('checkActivationHandler', () => {
-  beforeAll(() => {
-    return setupDb();
+
+  let mockDB;
+
+  beforeAll(async () => {
+    mockDB = await dbTools.setupDB(mockTableName);
+    await populateDB(mockDB.client);
   });
+
+  afterAll(async () => {
+  })
 
   test.each([['AM', '123456702'], ['DAY', '123456703']])('should set %s passes with default opening hour to active', async (passType, sk) => {
     const passDate = DateTime.fromISO('2021-12-08T19:01:58.135Z').setZone('America/Vancouver');
-    await docClient
+    console.log('mockTableName:', mockTableName);
+    await mockDB.client
       .put({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Item: {
           pk: 'pass::Test Park',
           sk: sk,
@@ -108,9 +119,9 @@ describe('checkActivationHandler', () => {
     await checkActivation.handler(null, {});
     MockDate.reset();
 
-    const result = await docClient
+    const result = await mockDB.client
       .get({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Key: {
           pk: 'pass::Test Park',
           sk: sk
@@ -122,9 +133,9 @@ describe('checkActivationHandler', () => {
 
   test.each([['AM', '123456704'], ['DAY', '123456705']])('should leave %s passes inactive before custom opening hour', async (passType, sk) => {
     const passDate = DateTime.fromISO('2021-12-08T19:01:58.135Z').setZone('America/Vancouver');
-    await docClient
+    await mockDB.client
       .put({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Item: {
           pk: 'pass::Test Park',
           sk: sk,
@@ -141,9 +152,9 @@ describe('checkActivationHandler', () => {
     await checkActivation.handler(null, {});
     MockDate.reset();
 
-    const result = await docClient
+    const result = await mockDB.client
       .get({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Key: {
           pk: 'pass::Test Park',
           sk: sk,
@@ -155,9 +166,9 @@ describe('checkActivationHandler', () => {
 
   test.each([['AM', '123456706'], ['DAY', '123456707']])('should set %s passes to active after custom opening hour', async (passType, sk) => {
     const passDate = DateTime.fromISO('2021-12-08T19:01:58.135Z').setZone('America/Vancouver');
-    await docClient
+    await mockDB.client
       .put({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Item: {
           pk: 'pass::Test Park',
           sk: sk,
@@ -174,9 +185,9 @@ describe('checkActivationHandler', () => {
     await checkActivation.handler(null, {});
     MockDate.reset();
 
-    const result = await docClient
+    const result = await mockDB.client
       .get({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Key: {
           pk: 'pass::Test Park',
           sk: sk,
@@ -188,9 +199,9 @@ describe('checkActivationHandler', () => {
 
   test('should leave PM passes before 12:00 inactive', async () => {
     const passDate = DateTime.fromISO('2021-12-08T19:01:58.135Z').setZone('America/Vancouver');
-    await docClient
+    await mockDB.client
       .put({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Item: {
           pk: 'pass::Test Park',
           sk: '123456708',
@@ -207,9 +218,9 @@ describe('checkActivationHandler', () => {
     await checkActivation.handler(null, {});
     MockDate.reset();
 
-    const result = await docClient
+    const result = await mockDB.client
       .get({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Key: {
           pk: 'pass::Test Park',
           sk: '123456708'
@@ -221,9 +232,9 @@ describe('checkActivationHandler', () => {
 
   test('should set PM passes after 12:00 to active', async () => {
     const passDate = DateTime.fromISO('2021-12-08T19:01:58.135Z').setZone('America/Vancouver');
-    await docClient
+    await mockDB.client
       .put({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Item: {
           pk: 'pass::Test Park',
           sk: '123456709',
@@ -240,9 +251,9 @@ describe('checkActivationHandler', () => {
     await checkActivation.handler(null, {});
     MockDate.reset();
 
-    const result = await docClient
+    const result = await mockDB.client
       .get({
-        TableName: TABLE_NAME,
+        TableName: mockTableName,
         Key: {
           pk: 'pass::Test Park',
           sk: '123456709'

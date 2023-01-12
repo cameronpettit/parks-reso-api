@@ -14,6 +14,7 @@ const { sendResponse } = require('../responseUtil');
 const { logger } = require('../logger');
 
 exports.handler = async (event, context) => {
+  console.log('TABLE_NAME:', TABLE_NAME);
   logger.debug('Event:', event, context);
   logger.debug('Server Time Zone:',
     Intl.DateTimeFormat().resolvedOptions().timeZone || 'undefined',
